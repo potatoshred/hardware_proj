@@ -16,7 +16,6 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 module MonoCycleCPU(
-    
     input  wire        Clk,
     input  wire        GO,
     input  wire        RST,
@@ -27,7 +26,13 @@ module MonoCycleCPU(
     output wire        fb_we,
     output wire [31:0] fb_addr,
     output wire [31:0] fb_wdata,
-    output wire [31:0] PC
+    output wire [31:0] PC,
+    
+    // Programming Interface
+    input wire prog_clk,
+    input wire prog_we,
+    input wire [31:0] prog_addr,
+    input wire [31:0] prog_data
 );
 
     /******************************************************************************
@@ -56,7 +61,11 @@ module MonoCycleCPU(
     wire [31:0] IR;
     ROM_instrROM instrROM(
         .Address(PCcur[11:2]),
-        .Data(IR)
+        .Data(IR),
+        .clk(prog_clk),
+        .we(prog_we),
+        .waddr(prog_addr[11:2]),
+        .wdata(prog_data)
     );
 
     /******************************************************************************
