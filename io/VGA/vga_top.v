@@ -20,7 +20,12 @@ module vga_top (
     
     // 开关输入
     input  wire [2:0]  SW,             // 开关 (用于选择测试图案)
-    
+
+    // Frame Buffer接口 (来自CPU)
+    input  wire        fb_we,          // Frame Buffer写使能
+    input  wire [31:0] fb_addr,        // Frame Buffer地址
+    input  wire [31:0] fb_wdata,       // Frame Buffer写数据
+
     // VGA输出
     output wire [3:0]  VGA_R,          // VGA红色信号
     output wire [3:0]  VGA_G,          // VGA绿色信号
@@ -38,8 +43,9 @@ module vga_top (
     wire [9:0]  pixel_x;               // 当前像素X坐标
     wire [9:0]  pixel_y;               // 当前像素Y坐标
     wire        video_on;              // 视频有效区域标志
-    wire [11:0] pixel_data;            // 像素数据
-    
+    wire [11:0] pixel_data;            // 测试图案像素数据
+    wire [11:0] fb_pixel_data;         // Frame Buffer像素数据
+
     // 开关同步 (防止亚稳态) - 3级同步确保时钟域跨越稳定
     reg [2:0] sw_sync1, sw_sync2, sw_sync3;
 
@@ -50,20 +56,30 @@ module vga_top (
     end
     
     //=========================================================================
+    // 模式选择逻辑
+    //=========================================================================
+    // SW[2:0] == 3'b111 (7): 使用Frame Buffer
+    // SW[2:0] == 其他值: 使用测试图案
+    wire use_framebuffer;
+    assign use_framebuffer = (sw_sync3 == 3'b111);
+
+    //=========================================================================
     // VGA控制器实例化
     //=========================================================================
     vga_controller u_vga_controller (
-        .clk_100mhz   (CLK),
-        .rst_n        (CPU_RESETN),
-        .vga_r        (VGA_R),
-        .vga_g        (VGA_G),
-        .vga_b        (VGA_B),
-        .vga_hs       (VGA_HS),
-        .vga_vs       (VGA_VS),
-        .pixel_x      (pixel_x),
-        .pixel_y      (pixel_y),
-        .video_on     (video_on),
-        .pixel_data   (pixel_data)
+        .clk_100mhz      (CLK),
+        .rst_n           (CPU_RESETN),
+        .vga_r           (VGA_R),
+        .vga_g           (VGA_G),
+        .vga_b           (VGA_B),
+        .vga_hs          (VGA_HS),
+        .vga_vs          (VGA_VS),
+        .pixel_x         (pixel_x),
+        .pixel_y         (pixel_y),
+        .video_on        (video_on),
+        .pixel_data      (pixel_data),
+        .use_framebuffer (use_framebuffer),
+        .fb_pixel_data   (fb_pixel_data)
     );
     
     //=========================================================================
@@ -77,6 +93,35 @@ module vga_top (
         .video_on     (video_on),
         .pattern_sel  (sw_sync3),
         .pixel_data   (pixel_data)
+    );
+
+    //=========================================================================
+    // Frame Buffer 实例化
+    //=========================================================================
+    // 获取25MHz VGA像素时钟 (从vga_controller内部生成)
+    // 注意: 这里需要暴露vga_controller的clk_25mhz信号
+    wire clk_25mhz;
+    reg [1:0] clk_div_fb;
+    always @(posedge CLK or negedge CPU_RESETN) begin
+        if (!CPU_RESETN)
+            clk_div_fb <= 2'b00;
+        else
+            clk_div_fb <= clk_div_fb + 1'b1;
+    end
+    assign clk_25mhz = clk_div_fb[1];
+
+    vga_framebuffer u_framebuffer (
+        // CPU写端口
+        .clk_cpu     (CLK),
+        .we_cpu      (fb_we),
+        .addr_cpu    (fb_addr),
+        .wdata_cpu   (fb_wdata),
+
+        // VGA读端口
+        .clk_vga     (clk_25mhz),
+        .pixel_x     (pixel_x),
+        .pixel_y     (pixel_y),
+        .pixel_data  (fb_pixel_data)
     );
     
     //=========================================================================

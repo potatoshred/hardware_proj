@@ -4,7 +4,7 @@
 
 module sevenseg_display_top(
     input               clk,        // 系统时钟
-    input               rst,      // 复位信号，高电平有效
+    input               rst,        // 复位信号，高电平有效
     input   [31:0]      data_in,    // 32位输入数据，显示8位十六进制数
     output  [7:0]       seg_sel,    // 8位数码管位选信号（低电平有效）
     output  [7:0]       seg_patt    // 7段数码管段选信号（低电平有效）
@@ -15,9 +15,6 @@ module sevenseg_display_top(
     // 每个数码管显示约125Hz，人眼感觉不到闪烁
     parameter DIVIDER = 100000;  // 100MHz / 100000 = 1kHz
 
-    reg [16:0] clk_div_cnt;
-    reg        clk_scan;
-
     // 扫描计数器（0-7循环）
     wire [2:0] scan_cnt;
 
@@ -27,28 +24,12 @@ module sevenseg_display_top(
     // 段选信号
     wire [7:0] seg_pattern;
 
-    //========================================
-    // 时钟分频：产生扫描时钟
-    //========================================
-    always @(posedge clk or posedge rst) begin
-        if (rst) begin
-            clk_div_cnt <= 17'd0;
-            clk_scan    <= 1'b0;
-        end else begin
-            if (clk_div_cnt >= DIVIDER - 1) begin
-                clk_div_cnt <= 17'd0;
-                clk_scan    <= ~clk_scan;  // 翻转扫描时钟
-            end else begin
-                clk_div_cnt <= clk_div_cnt + 1'b1;
-            end
-        end
-    end
 
     //========================================
     // 实例化计数器：生成扫描索引
     //========================================
     counter u_counter(
-        .clk(clk_scan),
+        .clk(clk),
         .out(scan_cnt)
     );
 

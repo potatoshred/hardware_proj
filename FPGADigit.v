@@ -60,11 +60,12 @@ module FPGADigit( clkx,
 //    end
 
 
-    clkDivider #(20000000) DividerCPU(.clk(clkx), .clk_N(clkCPU));
+    clkDivider #(100) DividerCPU(.clk(clkx), .clk_N(clkCPU));
     clkDivider #(250000) DividerDisplay(.clk(clkx), .clk_N(clkSEG));
 
     wire [2:0] vga_sel;
     wire [7:0] cpu_led;
+    wire [31:0] pc_val;
 
     MonoCycleCPU monoCycle(
         .Clk(clkCPU),
@@ -73,7 +74,8 @@ module FPGADigit( clkx,
         .Done(Done),
         .DisplayDigit(dig),
         .LEDdata(cpu_led),
-        .vga_sel(vga_sel)
+        .vga_sel(vga_sel),
+        .PC(pc_val)
     );
 
 
@@ -83,7 +85,7 @@ module FPGADigit( clkx,
     sevenseg_display_top u_sevenseg_display_top(
         .clk(clkSEG),
         .rst(RST),
-        .data_in(dig),
+        .data_in(EPC ? {2'b0, pc_val[31:2]} : dig),
         .seg_patt(SEG),
         .seg_sel(AN)
     );

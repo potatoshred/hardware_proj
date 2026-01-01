@@ -22,7 +22,7 @@ module ROM_instrROM( Address,
    // 定义一个深度为1024、宽度为8位的存储器
    reg [31:0] memory_array [1023:0];
    initial begin
-      $readmemh("D:/D3A/RISCV_CPU/fpga/my/rv32im/rv32im.srcs/sources_1/imports/asm/tst.hex", memory_array); // 使用十六进制文件初始化Data
+      $readmemh("D:/D3A/RISCV_CPU/fpga/my/rv32im/rv32im.srcs/sources_1/imports/src/asm/tst.hex", memory_array); // 使用十六进制文件初始化Data
    end
 
     assign Data = memory_array[Address];

@@ -23,7 +23,11 @@ module vga_controller (
     output wire [9:0]  pixel_x,        // 当前像素X坐标 (0-639)
     output wire [9:0]  pixel_y,        // 当前像素Y坐标 (0-479)
     output wire        video_on,       // 视频有效区域标志
-    input  wire [11:0] pixel_data      // 像素数据输入 {R[3:0], G[3:0], B[3:0]}
+    input  wire [11:0] pixel_data,     // 像素数据输入 {R[3:0], G[3:0], B[3:0]}
+
+    // Frame Buffer模式选择
+    input  wire        use_framebuffer, // 1=使用Frame Buffer, 0=使用测试图案
+    input  wire [11:0] fb_pixel_data   // Frame Buffer像素数据
 );
 
     //=========================================================================
@@ -115,7 +119,11 @@ module vga_controller (
     //=========================================================================
     // RGB输出控制
     //=========================================================================
-    
+
+    // 根据模式选择像素数据源
+    wire [11:0] selected_pixel_data;
+    assign selected_pixel_data = use_framebuffer ? fb_pixel_data : pixel_data;
+
     always @(posedge clk_25mhz or negedge rst_n) begin
         if (!rst_n) begin
             vga_r <= 4'b0000;
@@ -124,9 +132,9 @@ module vga_controller (
         end
         else if (video_on) begin
             // 在可见区域内输出像素数据
-            vga_r <= pixel_data[11:8];
-            vga_g <= pixel_data[7:4];
-            vga_b <= pixel_data[3:0];
+            vga_r <= selected_pixel_data[11:8];
+            vga_g <= selected_pixel_data[7:4];
+            vga_b <= selected_pixel_data[3:0];
         end
         else begin
             // 在消隐区域输出黑色

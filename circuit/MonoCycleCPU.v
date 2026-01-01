@@ -23,7 +23,11 @@ module MonoCycleCPU(
     output wire        Done,
     output wire [7:0]  LEDdata,
     output wire [31:0] DisplayDigit,
-    output wire [2:0]  vga_sel
+    output wire [2:0]  vga_sel,
+    output wire        fb_we,
+    output wire [31:0] fb_addr,
+    output wire [31:0] fb_wdata,
+    output wire [31:0] PC
 );
 
     /******************************************************************************
@@ -44,6 +48,7 @@ module MonoCycleCPU(
         .q(PCcur)
     );
     assign PC4 = PCcur + 4;
+    assign PC = PCcur;
 
     /******************************************************************************
     ** 指令存储器
@@ -257,6 +262,9 @@ module MonoCycleCPU(
     wire        led_we_bus;
     wire [2:0]  vga_sel_wdata_bus;
     wire        vga_sel_we_bus;
+    wire        fb_we_bus;
+    wire [31:0] fb_addr_bus;
+    wire [31:0] fb_wdata_bus;
 
     SimpleBus bus_inst (
         .addr(ALUret),
@@ -273,6 +281,9 @@ module MonoCycleCPU(
         .led_wdata(led_wdata_bus),
         .vga_sel_we(vga_sel_we_bus),
         .vga_sel_wdata(vga_sel_wdata_bus),
+        .fb_we(fb_we_bus),
+        .fb_addr(fb_addr_bus),
+        .fb_wdata(fb_wdata_bus),
         .read_data(Bus_ReadData)
     );
 
@@ -386,5 +397,12 @@ module MonoCycleCPU(
         .d(vga_sel_wdata_bus),
         .q(vga_sel)
     );
+
+    /******************************************************************************
+    ** Frame Buffer 直通输出
+    ******************************************************************************/
+    assign fb_we = fb_we_bus;
+    assign fb_addr = fb_addr_bus;
+    assign fb_wdata = fb_wdata_bus;
 
 endmodule

@@ -23,16 +23,23 @@ module SimpleBus(
     // VGA pattern
     output        vga_sel_we,
     output [2:0] vga_sel_wdata,
-    
+
+    // Frame Buffer
+    output        fb_we,
+    output [31:0] fb_addr,
+    output [31:0] fb_wdata,
+
     // 总线返回给 CPU 的数据
     output reg [31:0] read_data
 );
 
     // 1. 地址译码逻辑
-    wire is_ram = (addr >= 32'h0000 && addr <= 32'h0FFF); // 假设 RAM 空间
+    wire is_ram = (addr >= 32'h0000 && addr <= 32'h0FFF); // RAM 空间
     wire is_seg = (addr == 32'h1000);                     // 假设 seg 映射在 0x1000
     wire is_led = (addr == 32'h1004);                     // 假设 LED 映射在 0x1004
     wire is_vga = (addr == 32'h1008);                     // 假设 VGA 映射在 0x1008
+    // Frame Buffer: 0x8000_0000 - 0x8007_7FFF (480KB, 640*480*12bit)
+    wire is_fb  = (addr >= 32'h80000000 && addr < 32'h80078000);
 
     // 2. 分发写信号
     assign ram_addr  = addr;
@@ -47,6 +54,10 @@ module SimpleBus(
     // VGA
     assign vga_sel_we = is_vga && mem_write;
     assign vga_sel_wdata = write_data[2:0];
+    // Frame Buffer
+    assign fb_we    = is_fb && mem_write;
+    assign fb_addr  = addr;
+    assign fb_wdata = write_data;
 
     // 3. 收集读信号 (通过多路复用器)
     always @(*) begin
@@ -58,6 +69,8 @@ module SimpleBus(
             read_data = 32'h0; // LED 只写不读
         else if (is_vga)
             read_data = 32'h0; // VGA 选择寄存器只写不读
+        else if (is_fb)
+            read_data = 32'h0; // Frame Buffer 只写不读 (可扩展支持读)
         else
             read_data = 32'h0;
     end
