@@ -66,6 +66,9 @@ module FPGADigit( clkx,
     wire [2:0] vga_sel;
     wire [7:0] cpu_led;
     wire [31:0] pc_val;
+    wire fb_we_cpu;
+    wire [31:0] fb_addr_cpu;
+    wire [31:0] fb_wdata_cpu;
 
     MonoCycleCPU monoCycle(
         .Clk(clkCPU),
@@ -75,6 +78,9 @@ module FPGADigit( clkx,
         .DisplayDigit(dig),
         .LEDdata(cpu_led),
         .vga_sel(vga_sel),
+        .fb_we(fb_we_cpu),
+        .fb_addr(fb_addr_cpu),
+        .fb_wdata(fb_wdata_cpu),
         .PC(pc_val)
     );
 
@@ -93,6 +99,9 @@ module FPGADigit( clkx,
         .CLK        (clkx),
         .CPU_RESETN (CPU_RESETN),
         .SW         (vga_sel),
+        .fb_we      (fb_we_cpu),
+        .fb_addr    (fb_addr_cpu),
+        .fb_wdata   (fb_wdata_cpu),
         .VGA_R      (VGA_R),
         .VGA_G      (VGA_G),
         .VGA_B      (VGA_B),

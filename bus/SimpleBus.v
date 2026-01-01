@@ -38,8 +38,9 @@ module SimpleBus(
     wire is_seg = (addr == 32'h1000);                     // 假设 seg 映射在 0x1000
     wire is_led = (addr == 32'h1004);                     // 假设 LED 映射在 0x1004
     wire is_vga = (addr == 32'h1008);                     // 假设 VGA 映射在 0x1008
-    // Frame Buffer: 0x8000_0000 - 0x8007_7FFF (480KB, 640*480*12bit)
-    wire is_fb  = (addr >= 32'h80000000 && addr < 32'h80078000);
+    // Frame Buffer: 0x8000_0000 - 0x8012_BFFF (1.2MB, 640*480*4 bytes)
+    // 640 * 480 * 4 = 1,228,800 = 0x12C000 bytes
+    wire is_fb  = (addr >= 32'h80000000 && addr < 32'h8012C000);
 
     // 2. 分发写信号
     assign ram_addr  = addr;

@@ -16,7 +16,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 module MonoCycleCPU(
-
+    
     input  wire        Clk,
     input  wire        GO,
     input  wire        RST,
@@ -40,7 +40,7 @@ module MonoCycleCPU(
     /******************************************************************************
     ** PC 寄存器
     ******************************************************************************/
-    REGISTER_FLIP_FLOP PC(
+    REGISTER_FLIP_FLOP PC_Reg(
         .clk(Clk),
         .rst(RST),
         .e(~halt),
@@ -90,7 +90,8 @@ module MonoCycleCPU(
     Bit_Extender #(12, 32, 1) ext_immS (.imm_in(immS_raw), .imm_out(immS));
     Bit_Extender #(13, 32, 1) ext_immB (.imm_in(immB_raw), .imm_out(immB));
     Bit_Extender #(21, 32, 1) ext_immJ (.imm_in(immJ_raw), .imm_out(immJ));
-    Bit_Extender #(20, 32, 0) ext_immU (.imm_in(immU_raw), .imm_out(immU));  // 零扩展
+    // Bit_Extender #(20, 32, 0) ext_immU (.imm_in(immU_raw), .imm_out(immU));  // 零扩展
+    assign immU = {immU_raw, 12'b0}; // LUI/AUIPC 需要左移 12 位
 
     // 分支/跳转目标地址
     assign PC_B   = PCcur + immB;
