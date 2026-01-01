@@ -63,6 +63,7 @@ module FPGADigit( clkx,
 
 
     clkDivider #(10) DividerCPU(.clk(clkx), .clk_N(clkCPU));
+    clkDivider #(4) DividerSEG(.clk(clkx), .clk_N(clkVGA));
     clkDivider #(250000) DividerDisplay(.clk(clkx), .clk_N(clkSEG));
 
     wire [2:0] vga_sel;
@@ -124,7 +125,9 @@ module FPGADigit( clkx,
         .seg_sel(AN)
     );
     vga_top u_vga_top (
-        .CLK        (clkx),
+        .CLK100MHZ  (clkx),
+        .CLKCPU     (clkCPU),
+        .CLKVGA     (clkVGA), // Use system clock for VGA clock input
         .CPU_RESETN (CPU_RESETN),
         .SW         (vga_sel),
         .fb_we      (fb_we_cpu),

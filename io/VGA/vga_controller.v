@@ -18,7 +18,6 @@ module vga_controller (
     output reg  [3:0]  vga_b,          // 蓝色信号 (4位)
     output wire        vga_hs,         // 水平同步信号
     output wire        vga_vs,         // 垂直同步信号
-    output wire        clk_pixel,      // 25MHz像素时钟输出
     
     // 显示数据接口
     output wire [9:0]  pixel_x,        // 当前像素X坐标 (0-639)
@@ -63,7 +62,6 @@ module vga_controller (
     end
     
     assign clk_25mhz = clk_div[1];     // 100MHz / 4 = 25MHz
-    assign clk_pixel = clk_25mhz;      // 导出像素时钟
     
     //=========================================================================
     // 水平和垂直计数器

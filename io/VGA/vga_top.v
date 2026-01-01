@@ -15,7 +15,9 @@
 
 module vga_top (
     // 系统时钟和复位
-    input  wire        CLK,      // 100MHz系统时钟
+    input  wire        CLK100MHZ,      // 100MHz系统时钟
+    input  wire        CLKCPU,   // CPU时钟
+    input  wire        CLKVGA,   // 25MHz像素时钟
     input  wire        CPU_RESETN,     // CPU复位按钮 (低电平有效)
     
     // 开关输入
@@ -45,7 +47,6 @@ module vga_top (
     wire        video_on;              // 视频有效区域标志
     wire [11:0] pixel_data;            // 测试图案像素数据
     wire [11:0] fb_pixel_data;         // Frame Buffer像素数据
-    wire        clk_25mhz;             // 25MHz像素时钟 (来自vga_controller)
 
     
     //=========================================================================
@@ -60,14 +61,13 @@ module vga_top (
     // VGA控制器实例化
     //=========================================================================
     vga_controller u_vga_controller (
-        .clk_100mhz      (CLK),
+        .clk_100mhz      (CLK100MHZ),
         .rst_n           (CPU_RESETN),
         .vga_r           (VGA_R),
         .vga_g           (VGA_G),
         .vga_b           (VGA_B),
         .vga_hs          (VGA_HS),
         .vga_vs          (VGA_VS),
-        .clk_pixel       (clk_25mhz),         // 导出25MHz像素时钟
         .pixel_x         (pixel_x),
         .pixel_y         (pixel_y),
         .video_on        (video_on),
@@ -80,7 +80,7 @@ module vga_top (
     // 测试图案生成器实例化
     //=========================================================================
     vga_test_pattern u_test_pattern (
-        .clk          (CLK),
+        .clk          (CLKVGA),
         .rst_n        (CPU_RESETN),
         .pixel_x      (pixel_x),
         .pixel_y      (pixel_y),
@@ -95,13 +95,13 @@ module vga_top (
     // 使用vga_controller导出的25MHz像素时钟，确保时钟域同步
     vga_framebuffer u_framebuffer (
         // CPU写端口
-        .clk_cpu     (CLK),
+        .clk_cpu     (CLKCPU),
         .we_cpu      (fb_we),
         .addr_cpu    (fb_addr),
         .wdata_cpu   (fb_wdata),
 
         // VGA读端口 (使用vga_controller的25MHz像素时钟)
-        .clk_vga     (clk_25mhz),
+        .clk_vga     (CLKVGA),
         .pixel_x     (pixel_x),
         .pixel_y     (pixel_y),
         .pixel_data  (fb_pixel_data)

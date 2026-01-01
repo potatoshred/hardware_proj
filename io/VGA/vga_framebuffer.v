@@ -4,9 +4,9 @@
  * 色深: 12位 (R4G4B4)
  * 总存储: 307,200 像素 × 12bit = 3,686,400 bits ≈ 450KB
  *
- * 使用双端口BRAM实现:
- * - Port A: CPU写入端口 (32位宽，按字访问)
- * - Port B: VGA读取端口 (12位宽，按像素访问)
+ * 使用简单双端口BRAM实现 (Simple Dual Port RAM):
+ * - Port A: CPU写入端口 (12位宽，只写)
+ * - Port B: VGA读取端口 (12位宽，只读)
  */
 
 `timescale 1ns / 1ps
@@ -48,22 +48,23 @@ module vga_framebuffer #(
     wire [18:0] cpu_pixel_addr = cpu_offset[20:2];     // 转换为像素地址
 
     //=====================================================================
-    // 使用 Vivado BRAM IP 核
+    // 使用 Vivado BRAM IP 核 (Simple Dual Port RAM)
+    //=====================================================================
+    // Simple Dual Port RAM:
+    // - Port A: 只写端口 (无 douta 输出)
+    // - Port B: 只读端口 (无 web, dinb 输入)
     //=====================================================================
 
     blk_mem_gen_framebuffer bram_inst (
-        // Port A: CPU写端口
+        // Port A: CPU写端口 (Write Only)
         .clka   (clk_cpu),
         .wea    (we_cpu),
         .addra  (cpu_pixel_addr),
         .dina   (wdata_cpu[11:0]),
-        .douta  (),  // 不使用读端口
 
-        // Port B: VGA读端口
+        // Port B: VGA读端口 (Read Only)
         .clkb   (clk_vga),
-        .web    (1'b0),  // 只读
         .addrb  (pixel_addr),
-        .dinb   (12'b0),
         .doutb  (pixel_data)
     );
 
