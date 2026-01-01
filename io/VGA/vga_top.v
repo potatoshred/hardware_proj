@@ -46,14 +46,6 @@ module vga_top (
     wire [11:0] pixel_data;            // 测试图案像素数据
     wire [11:0] fb_pixel_data;         // Frame Buffer像素数据
 
-    // 开关同步 (防止亚稳态) - 3级同步确保时钟域跨越稳定
-    reg [2:0] sw_sync1, sw_sync2, sw_sync3;
-
-    always @(posedge CLK) begin
-        sw_sync1 <= SW;
-        sw_sync2 <= sw_sync1;
-        sw_sync3 <= sw_sync2;
-    end
     
     //=========================================================================
     // 模式选择逻辑
@@ -61,7 +53,7 @@ module vga_top (
     // SW[2:0] == 3'b111 (7): 使用Frame Buffer
     // SW[2:0] == 其他值: 使用测试图案
     wire use_framebuffer;
-    assign use_framebuffer = (sw_sync3 == 3'b111);
+    assign use_framebuffer = (SW == 3'b111);
 
     //=========================================================================
     // VGA控制器实例化
@@ -91,7 +83,7 @@ module vga_top (
         .pixel_x      (pixel_x),
         .pixel_y      (pixel_y),
         .video_on     (video_on),
-        .pattern_sel  (sw_sync3),
+        .pattern_sel  (SW),
         .pixel_data   (pixel_data)
     );
 
@@ -127,6 +119,6 @@ module vga_top (
     //=========================================================================
     // LED状态显示
     //=========================================================================
-    assign LED = sw_sync3;             // 显示当前选择的图案编号
+    assign LED = SW;             // 显示当前选择的图案编号
 
 endmodule

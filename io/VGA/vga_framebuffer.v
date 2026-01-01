@@ -16,13 +16,13 @@ module vga_framebuffer #(
     parameter V_DISPLAY = 480,
     parameter COLOR_BITS = 12
 )(
-    // Port A: CPU写端口 (32位宽)
+    // Port A: CPU写端口 
     input  wire         clk_cpu,        // CPU时钟
     input  wire         we_cpu,         // 写使能
     input  wire [31:0]  addr_cpu,       // CPU地址 (字节地址)
     input  wire [31:0]  wdata_cpu,      // 写数据 (32位)
 
-    // Port B: VGA读端口 (12位宽)
+    // Port B: VGA读端口 
     input  wire         clk_vga,        // VGA像素时钟 (25MHz)
     input  wire [9:0]   pixel_x,        // 像素X坐标 (0-639)
     input  wire [9:0]   pixel_y,        // 像素Y坐标 (0-479)
