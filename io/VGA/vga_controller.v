@@ -18,6 +18,7 @@ module vga_controller (
     output reg  [3:0]  vga_b,          // 蓝色信号 (4位)
     output wire        vga_hs,         // 水平同步信号
     output wire        vga_vs,         // 垂直同步信号
+    output wire        clk_pixel,      // 25MHz像素时钟输出
     
     // 显示数据接口
     output wire [9:0]  pixel_x,        // 当前像素X坐标 (0-639)
@@ -62,6 +63,7 @@ module vga_controller (
     end
     
     assign clk_25mhz = clk_div[1];     // 100MHz / 4 = 25MHz
+    assign clk_pixel = clk_25mhz;      // 导出像素时钟
     
     //=========================================================================
     // 水平和垂直计数器
@@ -108,13 +110,32 @@ module vga_controller (
     //=========================================================================
     // 视频有效区域判断
     //=========================================================================
-    
-    // 当在可见区域内时，video_on为高
-    assign video_on = (h_count < H_DISPLAY) && (v_count < V_DISPLAY);
-    
-    // 输出当前像素坐标
+
+    // 为补偿BRAM读延迟，需要提前1个周期提供地址
+    // 同时延迟video_on信号1个周期以匹配数据
+    reg video_on_d1;
+    reg [9:0] pixel_x_d1;
+    reg [9:0] pixel_y_d1;
+
+    always @(posedge clk_25mhz or negedge rst_n) begin
+        if (!rst_n) begin
+            video_on_d1 <= 1'b0;
+            pixel_x_d1 <= 10'd0;
+            pixel_y_d1 <= 10'd0;
+        end
+        else begin
+            video_on_d1 <= (h_count < H_DISPLAY) && (v_count < V_DISPLAY);
+            pixel_x_d1 <= h_count;
+            pixel_y_d1 <= v_count;
+        end
+    end
+
+    // 输出当前像素坐标 (提前1周期，用于BRAM地址)
     assign pixel_x = h_count;
     assign pixel_y = v_count;
+
+    // video_on使用延迟版本，与BRAM数据对齐
+    assign video_on = video_on_d1;
     
     //=========================================================================
     // RGB输出控制
@@ -124,23 +145,20 @@ module vga_controller (
     wire [11:0] selected_pixel_data;
     assign selected_pixel_data = use_framebuffer ? fb_pixel_data : pixel_data;
 
-    always @(posedge clk_25mhz or negedge rst_n) begin
-        if (!rst_n) begin
-            vga_r <= 4'b0000;
-            vga_g <= 4'b0000;
-            vga_b <= 4'b0000;
-        end
-        else if (video_on) begin
+    // 直接组合逻辑输出，不再额外寄存
+    // BRAM已经有1周期延迟的输出寄存器，video_on已经延迟1周期对齐
+    always @(*) begin
+        if (video_on) begin
             // 在可见区域内输出像素数据
-            vga_r <= selected_pixel_data[11:8];
-            vga_g <= selected_pixel_data[7:4];
-            vga_b <= selected_pixel_data[3:0];
+            vga_r = selected_pixel_data[11:8];
+            vga_g = selected_pixel_data[7:4];
+            vga_b = selected_pixel_data[3:0];
         end
         else begin
             // 在消隐区域输出黑色
-            vga_r <= 4'b0000;
-            vga_g <= 4'b0000;
-            vga_b <= 4'b0000;
+            vga_r = 4'b0000;
+            vga_g = 4'b0000;
+            vga_b = 4'b0000;
         end
     end
 

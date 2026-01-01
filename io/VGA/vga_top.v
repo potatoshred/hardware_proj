@@ -45,6 +45,7 @@ module vga_top (
     wire        video_on;              // 视频有效区域标志
     wire [11:0] pixel_data;            // 测试图案像素数据
     wire [11:0] fb_pixel_data;         // Frame Buffer像素数据
+    wire        clk_25mhz;             // 25MHz像素时钟 (来自vga_controller)
 
     
     //=========================================================================
@@ -66,6 +67,7 @@ module vga_top (
         .vga_b           (VGA_B),
         .vga_hs          (VGA_HS),
         .vga_vs          (VGA_VS),
+        .clk_pixel       (clk_25mhz),         // 导出25MHz像素时钟
         .pixel_x         (pixel_x),
         .pixel_y         (pixel_y),
         .video_on        (video_on),
@@ -90,18 +92,7 @@ module vga_top (
     //=========================================================================
     // Frame Buffer 实例化
     //=========================================================================
-    // 获取25MHz VGA像素时钟 (从vga_controller内部生成)
-    // 注意: 这里需要暴露vga_controller的clk_25mhz信号
-    wire clk_25mhz;
-    reg [1:0] clk_div_fb;
-    always @(posedge CLK or negedge CPU_RESETN) begin
-        if (!CPU_RESETN)
-            clk_div_fb <= 2'b00;
-        else
-            clk_div_fb <= clk_div_fb + 1'b1;
-    end
-    assign clk_25mhz = clk_div_fb[1];
-
+    // 使用vga_controller导出的25MHz像素时钟，确保时钟域同步
     vga_framebuffer u_framebuffer (
         // CPU写端口
         .clk_cpu     (CLK),
@@ -109,7 +100,7 @@ module vga_top (
         .addr_cpu    (fb_addr),
         .wdata_cpu   (fb_wdata),
 
-        // VGA读端口
+        // VGA读端口 (使用vga_controller的25MHz像素时钟)
         .clk_vga     (clk_25mhz),
         .pixel_x     (pixel_x),
         .pixel_y     (pixel_y),
