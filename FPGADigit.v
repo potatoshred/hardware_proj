@@ -22,7 +22,9 @@ module FPGADigit( clkx,
                  VGA_B,
                  VGA_HS,
                  VGA_VS,
-                 UART_TXD_IN // UART RX Pin
+                 UART_TXD_IN, // UART RX Pin
+                 PS2_CLK,
+                 PS2_DATA
                   );
 
    /***************************************************************************
@@ -30,6 +32,8 @@ module FPGADigit( clkx,
     ***************************************************************************/
    input clkx, GO, RST, EPC, Ld;
    input UART_TXD_IN;
+   inout PS2_CLK;
+   inout PS2_DATA;
                 input  wire        CPU_RESETN;     // CPU复位按钮 (低电平有效)
                 // 开关输入
                 input  wire [2:0]  SW;             // 开关 (用于选择测试图案)
@@ -131,10 +135,34 @@ module FPGADigit( clkx,
     // If in program mode, show debug LEDs (last received byte)
     assign LED[7:0] = prog_mode ? prog_led : cpu_led[7:0];
 
+    // USB键盘模块实例化（用于串口输入显示ASCII码）
+    wire [7:0] uart_ascii_out;
+    wire       uart_ascii_valid;
+    
+    usb_keyboard uart_kbd_inst(
+        .clk(clkx),                    // 100MHz时钟
+        .rst(RST),
+        .USB_CLOCK(PS2_CLK),           // 连接到PS/2键盘时钟
+        .USB_DATA(PS2_DATA),           // 连接到PS/2键盘数据
+        .RXD(prog_mode ? 1'b1 : UART_TXD_IN), // 编程模式下屏蔽串口输入，防止干扰
+        .TXD(),                        // 串口发送 (未连接)
+        .CTS(),                        // 未使用
+        .RTS(1'b0),                    // 固定为低电平（始终允许接收）
+        .ascii_out(uart_ascii_out),    // ASCII码输出到CPU
+        .ascii_valid(uart_ascii_valid) // ASCII码有效标志
+    );
+
+    // Latch last ASCII code for display
+    reg [7:0] last_ascii;
+    always @(posedge clkx) begin
+        if (RST) last_ascii <= 8'h00;
+        else if (uart_ascii_valid) last_ascii <= uart_ascii_out;
+    end
+
     sevenseg_display_top u_sevenseg_display_top(
         .clk(clkSEG),
         .rst(RST),
-        .data_in(EPC ? {2'b0, pc_val[31:2]} : dig),
+        .data_in(SW[0] ? {24'h0, last_ascii} : (EPC ? {2'b0, pc_val[31:2]} : dig)),
         .seg_patt(SEG),
         .seg_sel(AN)
     );
