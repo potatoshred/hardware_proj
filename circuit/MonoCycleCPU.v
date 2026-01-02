@@ -265,7 +265,7 @@ module MonoCycleCPU(
     wire [31:0] Bus_ReadData;
     wire [31:0] RAM_Out;
     wire [31:0] ram_addr_bus, ram_wdata_bus;
-    wire        ram_we_bus;
+    wire [3:0]  ram_we_bus; // Changed to 4 bits
     wire [31:0] seg_wdata_bus;
     wire        seg_we_bus;
     wire [7:0]  led_wdata_bus;
@@ -276,10 +276,32 @@ module MonoCycleCPU(
     wire [31:0] fb_addr_bus;
     wire [31:0] fb_wdata_bus;
 
+    // Generate Write Data and Mask for SB/SH/SW
+    reg [31:0] aligned_write_data;
+    reg [3:0]  write_mask;
+    
+    always @(*) begin
+        aligned_write_data = R2;
+        write_mask = 4'b0000;
+        
+        if (MemWrite) begin
+            if (Sb) begin
+                aligned_write_data = R2 << (ALUret[1:0] * 8);
+                write_mask = 4'b0001 << ALUret[1:0];
+            end else if (Sh) begin
+                aligned_write_data = R2 << (ALUret[1] * 16);
+                write_mask = 4'b0011 << (ALUret[1] * 2);
+            end else if (Sw) begin
+                aligned_write_data = R2;
+                write_mask = 4'b1111;
+            end
+        end
+    end
+
     SimpleBus bus_inst (
         .addr(ALUret),
-        .write_data(R2),
-        .mem_write(MemWrite),
+        .write_data(aligned_write_data), // Use aligned data
+        .mem_write_mask(write_mask),     // Use mask
         .mem_read(MemToReg),
         .ram_addr(ram_addr_bus),
         .ram_wdata(ram_wdata_bus),
@@ -301,7 +323,7 @@ module MonoCycleCPU(
         .addr(ram_addr_bus[13:2]),
         .clk(Clk),
         .d(ram_wdata_bus),
-        .str(ram_we_bus),
+        .we(ram_we_bus), // 4 bits
         .ld(MemToReg),
         .clr(RST),
         .q(RAM_Out),

@@ -9,7 +9,7 @@
 module RAM_dataRAM( addr,
                     clk,
                     d,
-                    str,
+                    we,
                     ld,
                     clr,
                     q,
@@ -24,7 +24,8 @@ module RAM_dataRAM( addr,
    input[11:0]  addr;
    input  clk;
    input[31:0]  d;
-   input  str, ld, clr;
+   input[3:0]   we; // Changed from str (1 bit) to we (4 bits)
+   input  ld, clr;
    
    // Programming Port
    input prog_clk;
@@ -41,9 +42,12 @@ module RAM_dataRAM( addr,
 	
 	// Port A: CPU Read/Write (Negedge triggered as per original design)
 	always @ (negedge clk) begin
-		if (str)
-			mem[addr] <= d;
-      else
+		if (we[0]) mem[addr][7:0]   <= d[7:0];
+		if (we[1]) mem[addr][15:8]  <= d[15:8];
+		if (we[2]) mem[addr][23:16] <= d[23:16];
+		if (we[3]) mem[addr][31:24] <= d[31:24];
+		
+		if (we == 4'b0000)
          q <= mem[addr];
 	end
 	

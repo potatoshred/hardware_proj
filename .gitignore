@@ -1,6 +1,5 @@
 .vscode
 .claude
 util*/
-imports
 FPGADigit.dcp
 asm

@@ -3,14 +3,14 @@
 module SimpleBus(
     input [31:0] addr,
     input [31:0] write_data,
-    input        mem_write,
+    input [3:0]  mem_write_mask, // Changed from mem_write (1 bit)
     input        mem_read,
     
     // 连接到 Data RAM
     input  [31:0] ram_rdata,
     output [31:0] ram_addr,
     output [31:0] ram_wdata,
-    output        ram_we,
+    output [3:0]  ram_we, // Changed from ram_we (1 bit)
     
     // 连接到外设 (例如 seg)
     output [31:0] peripheral_wdata,
@@ -45,18 +45,22 @@ module SimpleBus(
     // 2. 分发写信号
     assign ram_addr  = addr;
     assign ram_wdata = write_data;
-    assign ram_we    = is_ram && mem_write;
+    assign ram_we    = is_ram ? mem_write_mask : 4'b0000;
+    
+    // Generate single bit write enable for peripherals
+    wire write_enable = |mem_write_mask;
+
     // seg
     assign peripheral_wdata = write_data;
-    assign peripheral_we    = is_seg && mem_write;
+    assign peripheral_we    = is_seg && write_enable;
     // LED
     assign led_wdata = write_data[7:0];
-    assign led_we    = is_led && mem_write;
+    assign led_we    = is_led && write_enable;
     // VGA
-    assign vga_sel_we = is_vga && mem_write;
+    assign vga_sel_we = is_vga && write_enable;
     assign vga_sel_wdata = write_data[2:0];
     // Frame Buffer
-    assign fb_we    = is_fb && mem_write;
+    assign fb_we    = is_fb && write_enable;
     assign fb_addr  = addr;
     assign fb_wdata = write_data;
 
