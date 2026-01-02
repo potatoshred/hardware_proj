@@ -32,7 +32,11 @@ module MonoCycleCPU(
     input wire prog_clk,
     input wire prog_we,
     input wire [31:0] prog_addr,
-    input wire [31:0] prog_data
+    input wire [31:0] prog_data,
+
+    // UART
+    input wire uart_rx,
+    output wire uart_tx
 );
 
     /******************************************************************************
@@ -316,6 +320,11 @@ module MonoCycleCPU(
         .fb_we(fb_we_bus),
         .fb_addr(fb_addr_bus),
         .fb_wdata(fb_wdata_bus),
+        .uart_we(uart_we_bus),
+        .uart_re(uart_re_bus),
+        .uart_addr(uart_addr_bus),
+        .uart_wdata(uart_wdata_bus),
+        .uart_rdata(uart_rdata_bus),
         .read_data(Bus_ReadData)
     );
 
@@ -433,6 +442,29 @@ module MonoCycleCPU(
         .e(vga_sel_we_bus),
         .d(vga_sel_wdata_bus),
         .q(vga_sel)
+    );
+
+    // UART Signals
+    wire uart_we_bus;
+    wire uart_re_bus;
+    wire [31:0] uart_addr_bus;
+    wire [31:0] uart_wdata_bus;
+    wire [31:0] uart_rdata_bus;
+
+    // UART
+    UART_IO #(
+        .CLK_FREQ(25000000),
+        .BAUD_RATE(115200)
+    ) uart_io_inst (
+        .clk(Clk),
+        .rst(RST),
+        .addr(uart_addr_bus),
+        .wdata(uart_wdata_bus),
+        .we(uart_we_bus),
+        .re(uart_re_bus),
+        .rdata(uart_rdata_bus),
+        .rx(uart_rx),
+        .tx(uart_tx)
     );
 
     /******************************************************************************

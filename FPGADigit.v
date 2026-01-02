@@ -22,7 +22,8 @@ module FPGADigit( clkx,
                  VGA_B,
                  VGA_HS,
                  VGA_VS,
-                 UART_TXD_IN // UART RX Pin
+                 UART_TXD_IN, // UART RX Pin
+                 UART_RXD_OUT // UART TX Pin
                   );
 
    /***************************************************************************
@@ -30,6 +31,7 @@ module FPGADigit( clkx,
     ***************************************************************************/
    input clkx, GO, RST, EPC, Ld;
    input UART_TXD_IN;
+   output UART_RXD_OUT;
                 input  wire        CPU_RESETN;     // CPU复位按钮 (低电平有效)
                 // 开关输入
                 input  wire [2:0]  SW;             // 开关 (用于选择测试图案)
@@ -123,7 +125,9 @@ module FPGADigit( clkx,
         .prog_clk(clkx),
         .prog_we(prog_we & prog_mode),
         .prog_addr(prog_addr),
-        .prog_data(prog_data)
+        .prog_data(prog_data),
+        .uart_rx(UART_TXD_IN),
+        .uart_tx(UART_RXD_OUT)
     );
 
 
