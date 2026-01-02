@@ -112,6 +112,22 @@ module FPGADigit( clkx,
         .debug_led(prog_led)
     );
 
+    // Keyboard MMIO Register
+    reg [31:0] kbd_reg;
+    wire kbd_read_cpu;
+
+    always @(posedge clkx) begin
+        if (RST) begin
+            kbd_reg <= 32'd0;
+        end else begin
+            if (uart_ascii_valid) begin
+                kbd_reg <= {1'b1, 23'd0, uart_ascii_out}; // Set Valid bit (31) and Data
+            end else if (kbd_read_cpu) begin
+                kbd_reg[31] <= 1'b0; // Clear Valid bit on read
+            end
+        end
+    end
+
     MonoCycleCPU monoCycle(
         .Clk(clkCPU),
         .GO(GO),
@@ -124,6 +140,8 @@ module FPGADigit( clkx,
         .fb_addr(fb_addr_cpu),
         .fb_wdata(fb_wdata_cpu),
         .PC(pc_val),
+        .kbd_data(kbd_reg),      // Connect Keyboard Register
+        .kbd_read(kbd_read_cpu), // Connect Read Signal
         .prog_clk(clkx),
         .prog_we(prog_we & prog_mode),
         .prog_addr(prog_addr),
@@ -139,15 +157,11 @@ module FPGADigit( clkx,
     wire [7:0] uart_ascii_out;
     wire       uart_ascii_valid;
     
-    usb_keyboard uart_kbd_inst(
+    ps2_keyboard uart_kbd_inst(
         .clk(clkx),                    // 100MHz时钟
         .rst(RST),
-        .USB_CLOCK(PS2_CLK),           // 连接到PS/2键盘时钟
-        .USB_DATA(PS2_DATA),           // 连接到PS/2键盘数据
-        .RXD(prog_mode ? 1'b1 : UART_TXD_IN), // 编程模式下屏蔽串口输入，防止干扰
-        .TXD(),                        // 串口发送 (未连接)
-        .CTS(),                        // 未使用
-        .RTS(1'b0),                    // 固定为低电平（始终允许接收）
+        .ps2_clk(PS2_CLK),             // 连接到PS/2键盘时钟
+        .ps2_data(PS2_DATA),           // 连接到PS/2键盘数据
         .ascii_out(uart_ascii_out),    // ASCII码输出到CPU
         .ascii_valid(uart_ascii_valid) // ASCII码有效标志
     );

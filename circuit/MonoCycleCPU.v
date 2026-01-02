@@ -28,6 +28,10 @@ module MonoCycleCPU(
     output wire [31:0] fb_wdata,
     output wire [31:0] PC,
     
+    // Keyboard Input
+    input wire [31:0] kbd_data,
+    output wire       kbd_read,
+
     // Programming Interface
     input wire prog_clk,
     input wire prog_we,
@@ -307,6 +311,7 @@ module MonoCycleCPU(
         .ram_wdata(ram_wdata_bus),
         .ram_we(ram_we_bus),
         .ram_rdata(RAM_Out),
+        .kbd_rdata(kbd_data),            // Keyboard input
         .peripheral_wdata(seg_wdata_bus),
         .peripheral_we(seg_we_bus),
         .led_we(led_we_bus),
@@ -318,6 +323,10 @@ module MonoCycleCPU(
         .fb_wdata(fb_wdata_bus),
         .read_data(Bus_ReadData)
     );
+
+    // Generate Keyboard Read Signal
+    // Address 0x1000C is for Keyboard
+    assign kbd_read = MemToReg && (ALUret == 32'h1000C);
 
     RAM_dataRAM dataRam(
         .addr(ram_addr_bus[13:2]),

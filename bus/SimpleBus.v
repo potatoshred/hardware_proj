@@ -12,6 +12,9 @@ module SimpleBus(
     output [31:0] ram_wdata,
     output [3:0]  ram_we, // Changed from ram_we (1 bit)
     
+    // Keyboard input
+    input [31:0] kbd_rdata,
+
     // 连接到外设 (例如 seg)
     output [31:0] peripheral_wdata,
     output        peripheral_we,
@@ -38,6 +41,7 @@ module SimpleBus(
     wire is_seg = (addr == 32'h10000);                    // seg 映射在 0x10000
     wire is_led = (addr == 32'h10004);                    // LED 映射在 0x10004
     wire is_vga = (addr == 32'h10008);                    // VGA 映射在 0x10008
+    wire is_kbd = (addr == 32'h1000C);                    // Keyboard 映射在 0x1000C
     // Frame Buffer: 0x8000_0000 - 0x8012_BFFF (1.2MB, 640*480*4 bytes)
     // 640 * 480 * 4 = 1,228,800 = 0x12C000 bytes
     wire is_fb  = (addr >= 32'h80000000 && addr < 32'h8012C000);
@@ -74,6 +78,8 @@ module SimpleBus(
             read_data = 32'h0; // LED 只写不读
         else if (is_vga)
             read_data = 32'h0; // VGA 选择寄存器只写不读
+        else if (is_kbd)
+            read_data = kbd_rdata; // Keyboard 读数据
         else if (is_fb)
             read_data = 32'h0; // Frame Buffer 只写不读 (可扩展支持读)
         else
