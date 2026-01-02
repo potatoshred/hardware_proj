@@ -9,7 +9,7 @@
  */
 
 module vga_controller (
-    input  wire        clk_100mhz,    // 100MHz系统时钟
+    input  wire        pixel_clk,     // 25MHz像素时钟 (外部输入)
     input  wire        rst_n,          // 复位信号(低电平有效)
     
     // VGA输出信号
@@ -49,8 +49,9 @@ module vga_controller (
     localparam V_TOTAL      = 525;     // 垂直总行数
     
     //=========================================================================
-    // 时钟分频 - 100MHz -> 25MHz
+    // 时钟分频 - 已移除，直接使用外部输入的25MHz pixel_clk
     //=========================================================================
+    /*
     reg [1:0] clk_div;                 // 时钟分频计数器
     wire      clk_25mhz;               // 25MHz像素时钟
     
@@ -62,6 +63,7 @@ module vga_controller (
     end
     
     assign clk_25mhz = clk_div[1];     // 100MHz / 4 = 25MHz
+    */
     
     //=========================================================================
     // 水平和垂直计数器
@@ -70,7 +72,7 @@ module vga_controller (
     reg [9:0] v_count;                 // 垂直行计数器 (0-524)
     
     // 水平计数器
-    always @(posedge clk_25mhz or negedge rst_n) begin
+    always @(posedge pixel_clk or negedge rst_n) begin
         if (!rst_n)
             h_count <= 10'd0;
         else if (h_count == H_TOTAL - 1)
@@ -80,7 +82,7 @@ module vga_controller (
     end
     
     // 垂直计数器
-    always @(posedge clk_25mhz or negedge rst_n) begin
+    always @(posedge pixel_clk or negedge rst_n) begin
         if (!rst_n)
             v_count <= 10'd0;
         else if (h_count == H_TOTAL - 1) begin
@@ -92,72 +94,72 @@ module vga_controller (
     end
     
     //=========================================================================
-    // 同步信号生成
     //=========================================================================
-    
-    // 水平同步信号 (低电平有效)
-    // 在水平前沿之后开始，持续H_SYNC个时钟周期
-    assign vga_hs = ~((h_count >= H_DISPLAY + H_FRONT) && 
-                      (h_count < H_DISPLAY + H_FRONT + H_SYNC));
-    
-    // 垂直同步信号 (低电平有效)
-    // 在垂直前沿之后开始，持续V_SYNC行
-    assign vga_vs = ~((v_count >= V_DISPLAY + V_FRONT) && 
-                      (v_count < V_DISPLAY + V_FRONT + V_SYNC));
-    
+    // 同步信号生成 (原始)
     //=========================================================================
-    // 视频有效区域判断
-    //=========================================================================
+    wire hs_raw, vs_raw, video_on_raw;
+    assign hs_raw = ~((h_count >= H_DISPLAY + H_FRONT) && (h_count < H_DISPLAY + H_FRONT + H_SYNC));
+    assign vs_raw = ~((v_count >= V_DISPLAY + V_FRONT) && (v_count < V_DISPLAY + V_FRONT + V_SYNC));
+    assign video_on_raw = (h_count < H_DISPLAY) && (v_count < V_DISPLAY);
 
-    // 为补偿BRAM读延迟，需要提前1个周期提供地址
-    // 同时延迟video_on信号1个周期以匹配数据
-    reg video_on_d1;
-    reg [9:0] pixel_x_d1;
-    reg [9:0] pixel_y_d1;
-
-    always @(posedge clk_25mhz or negedge rst_n) begin
+    //=========================================================================
+    // 输出寄存器 (1周期延迟)
+    //=========================================================================
+    // 目的: 清除组合逻辑毛刺，并与BRAM数据对齐
+    // BRAM读取延迟为1周期，所以数据在T+1时刻有效
+    // 我们在这里将HS/VS也延迟1周期，使其与数据对齐
+    
+    reg hs_reg, vs_reg, video_on_reg;
+    
+    always @(posedge pixel_clk or negedge rst_n) begin
         if (!rst_n) begin
-            video_on_d1 <= 1'b0;
-            pixel_x_d1 <= 10'd0;
-            pixel_y_d1 <= 10'd0;
-        end
-        else begin
-            video_on_d1 <= (h_count < H_DISPLAY) && (v_count < V_DISPLAY);
-            pixel_x_d1 <= h_count;
-            pixel_y_d1 <= v_count;
+            hs_reg <= 1'b1;
+            vs_reg <= 1'b1;
+            video_on_reg <= 1'b0;
+            vga_r <= 4'b0;
+            vga_g <= 4'b0;
+            vga_b <= 4'b0;
+        end else begin
+            hs_reg <= hs_raw;
+            vs_reg <= vs_raw;
+            video_on_reg <= video_on_raw;
+            
+            // 数据输出逻辑
+            // 注意：selected_pixel_data 来自 BRAM (地址为 h_count)
+            // 当我们在时钟上升沿采样 selected_pixel_data 时，实际上采样的是
+            // 上一个周期地址对应的数据 (因为BRAM读延迟)
+            // 这正好与我们延迟1周期的 HS/VS/VideoOn 对齐
+            
+            if (video_on_raw) begin
+                vga_r <= selected_pixel_data[11:8];
+                vga_g <= selected_pixel_data[7:4];
+                vga_b <= selected_pixel_data[3:0];
+            end else begin
+                vga_r <= 4'b0;
+                vga_g <= 4'b0;
+                vga_b <= 4'b0;
+            end
         end
     end
+    
+    assign vga_hs = hs_reg;
+    assign vga_vs = vs_reg;
+    
+    // 输出给外部的 video_on 信号也需要延迟，以匹配 RGB 输出
+    // 这样 vga_test_pattern 生成的图案才能与时序对齐
+    assign video_on = video_on_reg; 
 
-    // 输出当前像素坐标 (提前1周期，用于BRAM地址)
+    // 输出当前像素坐标 (直接输出计数器，用于驱动BRAM地址)
+    // BRAM地址不需要延迟，因为我们需要提前读取数据
     assign pixel_x = h_count;
     assign pixel_y = v_count;
 
-    // video_on使用延迟版本，与BRAM数据对齐
-    assign video_on = video_on_d1;
-    
     //=========================================================================
-    // RGB输出控制
+    // RGB输出寄存器 (已合并到上方 always 块)
     //=========================================================================
 
     // 根据模式选择像素数据源
     wire [11:0] selected_pixel_data;
     assign selected_pixel_data = use_framebuffer ? fb_pixel_data : pixel_data;
-
-    // 直接组合逻辑输出，不再额外寄存
-    // BRAM已经有1周期延迟的输出寄存器，video_on已经延迟1周期对齐
-    always @(*) begin
-        if (video_on) begin
-            // 在可见区域内输出像素数据
-            vga_r = selected_pixel_data[11:8];
-            vga_g = selected_pixel_data[7:4];
-            vga_b = selected_pixel_data[3:0];
-        end
-        else begin
-            // 在消隐区域输出黑色
-            vga_r = 4'b0000;
-            vga_g = 4'b0000;
-            vga_b = 4'b0000;
-        end
-    end
 
 endmodule

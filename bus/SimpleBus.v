@@ -34,10 +34,10 @@ module SimpleBus(
 );
 
     // 1. 地址译码逻辑
-    wire is_ram = (addr >= 32'h0000 && addr <= 32'h0FFF); // RAM 空间
-    wire is_seg = (addr == 32'h1000);                     // 假设 seg 映射在 0x1000
-    wire is_led = (addr == 32'h1004);                     // 假设 LED 映射在 0x1004
-    wire is_vga = (addr == 32'h1008);                     // 假设 VGA 映射在 0x1008
+    wire is_ram = (addr >= 32'h0000 && addr <= 32'h3FFF); // RAM 空间 (16KB)
+    wire is_seg = (addr == 32'h10000);                    // seg 映射在 0x10000
+    wire is_led = (addr == 32'h10004);                    // LED 映射在 0x10004
+    wire is_vga = (addr == 32'h10008);                    // VGA 映射在 0x10008
     // Frame Buffer: 0x8000_0000 - 0x8012_BFFF (1.2MB, 640*480*4 bytes)
     // 640 * 480 * 4 = 1,228,800 = 0x12C000 bytes
     wire is_fb  = (addr >= 32'h80000000 && addr < 32'h8012C000);

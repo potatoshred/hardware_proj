@@ -60,11 +60,11 @@ module MonoCycleCPU(
     ******************************************************************************/
     wire [31:0] IR;
     ROM_instrROM instrROM(
-        .Address(PCcur[11:2]),
+        .Address(PCcur[13:2]),
         .Data(IR),
         .clk(prog_clk),
         .we(prog_we),
-        .waddr(prog_addr[11:2]),
+        .waddr(prog_addr[13:2]),
         .wdata(prog_data)
     );
 
@@ -298,13 +298,18 @@ module MonoCycleCPU(
     );
 
     RAM_dataRAM dataRam(
-        .addr(ram_addr_bus[11:2]),
+        .addr(ram_addr_bus[13:2]),
         .clk(Clk),
         .d(ram_wdata_bus),
         .str(ram_we_bus),
         .ld(MemToReg),
         .clr(RST),
-        .q(RAM_Out)
+        .q(RAM_Out),
+        // Programming Port
+        .prog_clk(prog_clk),
+        .prog_we(prog_we),
+        .prog_addr(prog_addr[13:2]),
+        .prog_data(prog_data)
     );
 
     /******************************************************************************

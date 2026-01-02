@@ -62,8 +62,22 @@ module FPGADigit( clkx,
 //    end
 
 
-    clkDivider #(10) DividerCPU(.clk(clkx), .clk_N(clkCPU));
-    clkDivider #(4) DividerSEG(.clk(clkx), .clk_N(clkVGA));
+    // clkDivider #(10) DividerCPU(.clk(clkx), .clk_N(clkCPU));
+    // clkDivider #(4) DividerSEG(.clk(clkx), .clk_N(clkVGA));
+    
+    wire mmcm_locked;
+    clock_generator clk_gen_inst (
+        .clk_in1(clkx),
+        .clk_out1(clkVGA),
+        .clk_out2(clkCPU),
+        .reset(1'b0), // MMCM reset is active high
+        .locked(mmcm_locked)
+    );
+
+    // 只有当 MMCM 锁定且 CPU_RESETN 未按下时，才释放 VGA 复位
+    // 这样可以防止在时钟不稳定时 VGA 控制器输出异常信号
+    wire vga_rst_n = CPU_RESETN & mmcm_locked;
+
     clkDivider #(250000) DividerDisplay(.clk(clkx), .clk_N(clkSEG));
 
     wire [2:0] vga_sel;
@@ -128,7 +142,7 @@ module FPGADigit( clkx,
         .CLK100MHZ  (clkx),
         .CLKCPU     (clkCPU),
         .CLKVGA     (clkVGA), // Use system clock for VGA clock input
-        .CPU_RESETN (CPU_RESETN),
+        .CPU_RESETN (vga_rst_n), // 使用经过 MMCM 锁定信号门控的复位信号
         .SW         (vga_sel),
         .fb_we      (fb_we_cpu),
         .fb_addr    (fb_addr_cpu),

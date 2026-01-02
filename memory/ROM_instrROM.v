@@ -16,12 +16,12 @@ module ROM_instrROM( Address,
    /***************************************************************************
     ** Here the inputs are defined                                           **
     ***************************************************************************/
-   input[9:0]  Address;
+   input[11:0]  Address;
    
    // Programming Interface
    input clk;
    input we;
-   input [9:0] waddr;
+   input [11:0] waddr;
    input [31:0] wdata;
 
    /***************************************************************************
@@ -29,8 +29,8 @@ module ROM_instrROM( Address,
     ***************************************************************************/
    output [31:0] Data;
 
-   // 定义一个深度为1024、宽度为32位的存储器
-   reg [31:0] memory_array [1023:0];
+   // 定义一个深度为4096、宽度为32位的存储器
+   reg [31:0] memory_array [4095:0];
    initial begin
       $readmemh("D:/D3A/RISCV_CPU/fpga/my/rv32im/rv32im.srcs/sources_1/imports/src/asm/tst.hex", memory_array); // 使用十六进制文件初始化Data
    end

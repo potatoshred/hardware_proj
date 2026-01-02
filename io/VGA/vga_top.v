@@ -61,7 +61,7 @@ module vga_top (
     // VGA控制器实例化
     //=========================================================================
     vga_controller u_vga_controller (
-        .clk_100mhz      (CLK100MHZ),
+        .pixel_clk       (CLKVGA),       // 使用外部传入的25MHz时钟
         .rst_n           (CPU_RESETN),
         .vga_r           (VGA_R),
         .vga_g           (VGA_G),
