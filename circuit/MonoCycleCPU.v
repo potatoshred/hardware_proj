@@ -244,7 +244,8 @@ module MonoCycleCPU(
     );
 
     // 从 ALU 提取无符号比较结果（通过 SLTU 操作）
-    assign LessU = Less;  // ALU 内部已处理
+    // 当执行 BLTU/BGEU 时，ALU 执行 SLTU，结果最低位即为无符号比较结果
+    assign LessU = ALUret[0];
 
     /******************************************************************************
     ** 分支判断逻辑 (扩展支持所有 6 种分支)
@@ -254,8 +255,8 @@ module MonoCycleCPU(
                          (Bne  & (~Equal)) |
                          (Blt  & Less) |
                          (Bge  & GE) |
-                         (Bltu & Less) |   // 使用 ALU 的 SLTU 结果
-                         (Bgeu & (~Less)); // 无符号 >=
+                         (Bltu & LessU) |   // 使用 ALU 的 SLTU 结果
+                         (Bgeu & (~LessU)); // 无符号 >=
 
     wire Btype = Branch & branch_taken;
     wire Jtype = JAL | JALR;

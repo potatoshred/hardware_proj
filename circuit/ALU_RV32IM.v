@@ -38,9 +38,12 @@ module ALU_RV32IM(
     wire equal_flag    = (X == Y);
 
     // 乘除法 (简化版)
-    wire [63:0] mul_result = X * Y;
-    wire [31:0] mul_low    = mul_result[31:0];
-    wire [31:0] mul_high   = mul_result[63:32];
+    wire [63:0] mul_result_u_u = X * Y;
+    wire [63:0] mul_result_s_s = $signed(X) * $signed(Y);
+    wire [63:0] mul_result_s_u = $signed(X) * $signed({1'b0, Y});
+
+    wire [31:0] mul_low    = mul_result_u_u[31:0];
+    
     wire [31:0] div_quot   = (Y != 0) ? $signed($signed(X) / $signed(Y)) : 32'hFFFFFFFF;
     wire [31:0] div_rem    = (Y != 0) ? $signed($signed(X) % $signed(Y)) : X;
     wire [31:0] divu_quot  = (Y != 0) ? (X / Y) : 32'hFFFFFFFF;
@@ -67,16 +70,16 @@ module ALU_RV32IM(
             `ALU_XOR:    result_mux = xor_result;
             `ALU_SLT:    result_mux = {31'b0, less_signed};
             `ALU_SLTU:   result_mux = {31'b0, less_unsigned};
-            `ALU_MULH:   result_mux = mul_high;
-            `ALU_MULHU:  result_mux = mul_high;
-            `ALU_MULHSU: result_mux = mul_high;
+            `ALU_MULH:   result_mux = mul_result_s_s[63:32];
+            `ALU_MULHU:  result_mux = mul_result_u_u[63:32];
+            `ALU_MULHSU: result_mux = mul_result_s_u[63:32];
             default:     result_mux = add_result;
         endcase
     end
 
     always @(*) begin
         case (AluOP)
-            `ALU_MUL:    result_2_mux = mul_high;
+            `ALU_MUL:    result_2_mux = mul_result_u_u[63:32];
             default:     result_2_mux = 32'b0;
         endcase
     end

@@ -16,7 +16,7 @@ module clock_generator(
     // Xilinx HDL Language Template, version 2019.1
 
     MMCME2_BASE #(
-        .BANDWIDTH("LOW"),         // Jitter programming (OPTIMIZED, HIGH, LOW)
+        .BANDWIDTH("OPTIMIZED"),         // Jitter programming (OPTIMIZED, HIGH, LOW)
         .CLKFBOUT_MULT_F(9.0),     // Multiply value for all CLKOUT (2.000-64.000). VCO = 100 * 9 = 900 MHz
         .CLKFBOUT_PHASE(0.0),      // Phase offset in degrees of CLKFB (-360.000-360.000).
         .CLKIN1_PERIOD(10.0),      // Input clock period in ns to ps resolution (i.e. 33.333 is 30 MHz).

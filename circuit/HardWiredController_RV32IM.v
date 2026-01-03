@@ -302,8 +302,8 @@ module HardWiredController_RV32IM(
     // ========================================================================
     // Register Usage Flags
     // ========================================================================
-    // Rs is used by most instructions except LUI, JAL, CSRxI
-    assign RsUsed = ~(is_lui | is_jal |
+    // Rs is used by most instructions except LUI, AUIPC, JAL, CSRxI
+    assign RsUsed = ~(is_lui | is_auipc | is_jal |
                       is_system & (Funct3[2])); // CSRxI uses immediate
 
     // Rt (Rs2) is used by: R-type, Store, Branch
