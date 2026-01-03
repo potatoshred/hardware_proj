@@ -61,6 +61,7 @@ module HardWiredController_RV32IM(
     output wire        ecall,        // ECALL instruction
     output wire        ebreak,       // EBREAK instruction
     output wire        uret,         // URET instruction
+    output wire        mret,         // MRET instruction
 
     // Register usage flags
     output wire        RsUsed,       // Rs is used
@@ -150,6 +151,7 @@ module HardWiredController_RV32IM(
     assign ecall   = is_priv & (IR_full == 7'b0000000) & (Rs2_addr == 5'b00000);
     assign ebreak  = is_priv & (IR_full == 7'b0000000) & (Rs2_addr == 5'b00001);
     assign uret    = is_priv & (IR_full == 7'b0000000) & (Rs2_addr == 5'b00010);
+    assign mret    = is_priv & (IR_full == 7'b0011000) & (Rs2_addr == 5'b00010) & (Funct3 == 3'b000);  // 修复：0x30200073 的 funct7 = 0x18 = 0b0011000
 
     assign CSRRW   = is_system & (Funct3 == `FUNCT3_CSRRW);
     assign CSRRS   = is_system & (Funct3 == `FUNCT3_CSRRS);

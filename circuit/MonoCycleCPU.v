@@ -124,9 +124,29 @@ module MonoCycleCPU(
     wire        Sb, Sh, Sw;
     wire        S_type, B_type, U_type, J_type;
     wire        CSRRSI, CSRRCI, CSRRW, CSRRS, CSRRC;
-    wire        ecall, ebreak, uret;
+    wire        ecall, ebreak, uret, mret;
     wire        RsUsed, RtUsed;
     wire        Is_M_Ext, Mul_Op, Div_Op;
+
+    /******************************************************************************
+    ** CSR 和 Trap 相关信号
+    ******************************************************************************/
+    wire [31:0] csr_rdata;      // CSR read data
+    wire [31:0] csr_wdata;      // CSR write data
+    wire        csr_we;         // CSR write enable
+    wire [11:0] csr_addr;       // CSR address
+    wire [31:0] mtvec_out;      // Trap handler address
+    wire [31:0] mepc_out;       // Exception return PC
+    wire        trap_entry;     // Trap entry signal
+    wire [31:0] trap_cause;     // Trap cause code
+
+    // Trap cause codes
+    localparam CAUSE_ECALL_M    = 32'd11;   // Environment call from M-mode
+    localparam CAUSE_EBREAK     = 32'd3;    // Breakpoint
+
+    // CSR operation signal
+    wire is_csr_op;
+    assign is_csr_op = CSRRW | CSRRS | CSRRC | CSRRSI | CSRRCI;
 
     HardWiredController_RV32IM controller(
         .IR_full(funct7),
@@ -172,6 +192,7 @@ module MonoCycleCPU(
         .ecall(ecall),
         .ebreak(ebreak),
         .uret(uret),
+        .mret(mret),        // 新增！
         // Register usage
         .RsUsed(RsUsed),
         .RtUsed(RtUsed),
@@ -185,6 +206,54 @@ module MonoCycleCPU(
         .Mul_Op(Mul_Op),
         .Div_Op(Div_Op)
     );
+
+    /******************************************************************************
+    ** CSR 寄存器模块
+    ******************************************************************************/
+    CSR_Registers csr_regs(
+        .clk(Clk),
+        .rst(RST),
+
+        // CSR Read/Write Interface
+        .csr_we(csr_we),
+        .csr_addr(csr_addr),
+        .csr_wdata(csr_wdata),
+        .csr_rdata(csr_rdata),
+
+        // Trap Interface
+        .trap_entry(trap_entry),
+        .trap_pc(PCcur + 4),      // Save PC of next instruction
+        .trap_cause(trap_cause),
+
+        // Trap Return
+        .mret(mret),
+
+        // Output
+        .mtvec_out(mtvec_out),
+        .mepc_out(mepc_out)
+    );
+
+    // CSR address from immediate field
+    assign csr_addr = IR[31:20];
+
+    // CSR write data selection
+    assign csr_wdata = CSRRW  ? R1 :
+                       CSRRS  ? (csr_rdata | R1) :
+                       CSRRC  ? (csr_rdata & ~R1) :
+                       CSRRSI ? (csr_rdata | {27'b0, rs1_addr}) :
+                       CSRRCI ? (csr_rdata & ~{27'b0, rs1_addr}) :
+                       32'h00000000;
+
+    // CSR write enable
+    assign csr_we = is_csr_op & ~RST;
+
+    // Trap entry detection (ECALL or EBREAK, but exclude legacy halt)
+    assign trap_entry = (ecall & (R2 != 32'd10) & (R2 != 32'd34)) | ebreak;
+
+    // Trap cause
+    assign trap_cause = ecall  ? CAUSE_ECALL_M :
+                        ebreak ? CAUSE_EBREAK :
+                        32'h00000000;
 
     /******************************************************************************
     ** 寄存器文件
@@ -381,35 +450,47 @@ module MonoCycleCPU(
     // 选择 ALU 结果或内存数据
     assign alu_or_mem = MemToReg ? load_data : alu_result_final;
 
-    // 最终写回数据：JAL/JALR 写入 PC+4
-    assign RDin = Jtype ? PC4 : alu_or_mem;
+    // 最终写回数据：JAL/JALR 写入 PC+4，CSR 指令写入 CSR 读取值
+    assign RDin = Jtype ? PC4 :
+                  is_csr_op ? csr_rdata :       // 新增CSR读取！
+                  alu_or_mem;
 
     /******************************************************************************
-    ** PC 下一值选择
+    ** PC 跳转逻辑 (增强版：支持 trap 和 mret)
     ******************************************************************************/
-    wire       valid;
-    wire [1:0] PCsel;
+    wire [31:0] PC_normal;      // 正常PC（分支/跳转）
 
-    Priority_Encoder priorityEncoder(
+    // 正常指令流的PC选择
+    wire       valid;
+    wire [1:0] PCsel_normal;
+
+    Priority_Encoder priorityEncoder_normal(
         .in({JALR, JAL, Btype, 1'b1}),
-        .out(PCsel),
+        .out(PCsel_normal),
         .valid(valid)
     );
 
-    Multiplexer_4 #(.NrOfBits(32)) MultiplexerPC(
+    Multiplexer_4 #(.NrOfBits(32)) MultiplexerPC_normal(
         .Enable(1'b1),
         .MuxIn_0(PC4),
         .MuxIn_1(PC_B),
         .MuxIn_2(PC_Jal),
         .MuxIn_3(PC_Jalr),
-        .Sel(PCsel),
-        .MuxOut(PCnxt)
+        .Sel(PCsel_normal),
+        .MuxOut(PC_normal)
     );
 
+    // Trap处理优先级最高
+    assign PCnxt = trap_entry ? mtvec_out :    // ECALL/exception -> trap handler
+                   mret       ? mepc_out :      // mret -> return from trap
+                   PC_normal;                   // Normal instruction flow
+
     /******************************************************************************
-    ** HALT 控制
+    ** HALT 控制 (兼容模式)
     ******************************************************************************/
-    assign halt = GO ? 1'b0 : (ecall & (R2 == 32'd10));
+    // 保留原有的 a7=10 停机功能（向后兼容）
+    wire legacy_halt = ecall & (R2 == 32'd10);
+    assign halt = GO ? 1'b0 : legacy_halt;
     assign Done = ~halt;
 
     /******************************************************************************
