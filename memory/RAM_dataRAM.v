@@ -21,16 +21,16 @@ module RAM_dataRAM( addr,
    /***************************************************************************
     ** Here the inputs are defined                                           **
     ***************************************************************************/
-   input[11:0]  addr;
+   input[14:0]  addr;
    input  clk;
    input[31:0]  d;
    input[3:0]   we; // Changed from str (1 bit) to we (4 bits)
    input  ld, clr;
-   
+
    // Programming Port
    input prog_clk;
    input prog_we;
-   input [11:0] prog_addr;
+   input [14:0] prog_addr;
    input [31:0] prog_data;
 
    /***************************************************************************
@@ -38,7 +38,7 @@ module RAM_dataRAM( addr,
     ***************************************************************************/
    output reg[31:0] q;
 
-	reg [31:0] mem[4095:0];
+	reg [31:0] mem[8191:0];
 	
 	// Port A: CPU Read/Write (Negedge triggered as per original design)
 	always @ (negedge clk) begin
