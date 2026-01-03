@@ -24,7 +24,7 @@ module clock_generator(
         .CLKOUT0_DIVIDE_F(35.75),  // Divide amount for CLKOUT0 (1.000-128.000). 900 / 35.75 = 25.1748 MHz
         .CLKOUT0_DUTY_CYCLE(0.5),
         .CLKOUT0_PHASE(0.0),
-        .CLKOUT1_DIVIDE(36),       // 900 / 36 = 25 MHz
+        .CLKOUT1_DIVIDE(90),       // 900 / 90 = 10 MHz
         .CLKOUT1_DUTY_CYCLE(0.5),
         .CLKOUT1_PHASE(0.0),
         .DIVCLK_DIVIDE(1),         // Master division value (1-106)

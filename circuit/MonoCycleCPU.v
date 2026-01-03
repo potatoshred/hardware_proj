@@ -454,7 +454,7 @@ module MonoCycleCPU(
 
     // UART
     UART_IO #(
-        .CLK_FREQ(25000000),
+        .CLK_FREQ(10000000),
         .BAUD_RATE(115200)
     ) uart_io_inst (
         .clk(Clk),
