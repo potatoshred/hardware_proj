@@ -118,7 +118,7 @@ module CSR_Registers(
     //=========================================================================
     // Output Assignments
     //=========================================================================
-    assign mtvec_out = mtvec;
+    assign mtvec_out = {mtvec[31:2], 2'b00}; // Force 4-byte alignment
     assign mepc_out  = mepc;
 
 endmodule

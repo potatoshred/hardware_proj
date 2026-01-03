@@ -123,7 +123,7 @@ module MonoCycleCPU(
     wire        Lb, Lh, Lw, Lbu, Lhu;
     wire        Sb, Sh, Sw;
     wire        S_type, B_type, U_type, J_type;
-    wire        CSRRSI, CSRRCI, CSRRW, CSRRS, CSRRC;
+    wire        CSRRSI, CSRRCI, CSRRW, CSRRS, CSRRC, CSRRWI;
     wire        ecall, ebreak, uret, mret;
     wire        RsUsed, RtUsed;
     wire        Is_M_Ext, Mul_Op, Div_Op;
@@ -146,7 +146,7 @@ module MonoCycleCPU(
 
     // CSR operation signal
     wire is_csr_op;
-    assign is_csr_op = CSRRW | CSRRS | CSRRC | CSRRSI | CSRRCI;
+    assign is_csr_op = CSRRW | CSRRS | CSRRC | CSRRSI | CSRRCI | CSRRWI;
 
     HardWiredController_RV32IM controller(
         .IR_full(funct7),
@@ -189,6 +189,7 @@ module MonoCycleCPU(
         .CSRRW(CSRRW),
         .CSRRS(CSRRS),
         .CSRRC(CSRRC),
+        .CSRRWI(CSRRWI),
         .ecall(ecall),
         .ebreak(ebreak),
         .uret(uret),
@@ -222,7 +223,7 @@ module MonoCycleCPU(
 
         // Trap Interface
         .trap_entry(trap_entry),
-        .trap_pc(PCcur + 4),      // Save PC of next instruction
+        .trap_pc(PCcur),          // Save PC of current instruction (exception)
         .trap_cause(trap_cause),
 
         // Trap Return
@@ -240,12 +241,17 @@ module MonoCycleCPU(
     assign csr_wdata = CSRRW  ? R1 :
                        CSRRS  ? (csr_rdata | R1) :
                        CSRRC  ? (csr_rdata & ~R1) :
+                       CSRRWI ? {27'b0, rs1_addr} :
                        CSRRSI ? (csr_rdata | {27'b0, rs1_addr}) :
                        CSRRCI ? (csr_rdata & ~{27'b0, rs1_addr}) :
                        32'h00000000;
 
     // CSR write enable
-    assign csr_we = is_csr_op & ~RST;
+    // Prevent write if:
+    // - CSRRS/CSRRC with rs1=x0 (rs1_addr=0)
+    // - CSRRSI/CSRRCI with uimm=0 (rs1_addr=0)
+    wire csr_no_write = (CSRRS | CSRRC | CSRRSI | CSRRCI) & (rs1_addr == 5'b0);
+    assign csr_we = is_csr_op & ~csr_no_write & ~RST;
 
     // Trap entry detection (ECALL or EBREAK, but exclude legacy halt)
     assign trap_entry = (ecall & (R2 != 32'd10) & (R2 != 32'd34)) | ebreak;

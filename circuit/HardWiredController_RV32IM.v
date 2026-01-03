@@ -55,6 +55,7 @@ module HardWiredController_RV32IM(
     // System & CSR
     output wire        CSRRSI,       // CSR read and set immediate
     output wire        CSRRCI,       // CSR read and clear immediate
+    output wire        CSRRWI,       // CSR read and write immediate
     output wire        CSRRW,        // CSR read and write
     output wire        CSRRS,        // CSR read and set
     output wire        CSRRC,        // CSR read and clear
@@ -156,6 +157,7 @@ module HardWiredController_RV32IM(
     assign CSRRW   = is_system & (Funct3 == `FUNCT3_CSRRW);
     assign CSRRS   = is_system & (Funct3 == `FUNCT3_CSRRS);
     assign CSRRC   = is_system & (Funct3 == `FUNCT3_CSRRC);
+    assign CSRRWI  = is_system & (Funct3 == `FUNCT3_CSRRWI);
     assign CSRRSI  = is_system & (Funct3 == `FUNCT3_CSRRSI);
     assign CSRRCI  = is_system & (Funct3 == `FUNCT3_CSRRCI);
 
